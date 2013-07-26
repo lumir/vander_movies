@@ -8,6 +8,7 @@ gem 'rails', '3.2.0'
 gem 'rails-api'
 
 gem 'sqlite3'
+gem "nokogiri"
 
 
 # To use ActiveModel has_secure_password
