@@ -6,8 +6,8 @@ gem 'rails', '3.2.0'
 # gem 'rails', :git => 'git://github.com/rails/rails.git'
 
 gem 'rails-api'
-
-gem 'sqlite3'
+gem "httparty"
+gem 'pg'
 gem "nokogiri"
 
 
