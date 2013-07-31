@@ -5,13 +5,15 @@ require 'uri'
 namespace :movie do
   desc "feed movies"
   task :get_movies => :environment do    
+    s3 = AWS::S3.new(:access_key_id => 'AKIAJINPR4ZEXQU2C5TA',:secret_access_key => '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')
+    bucket = s3.buckets['modwedding']
     movies = []
-    #["A","B","C","D","E","F","G","H","I","J-K","L","M","N-O","P","Q-R","S","T","U-W","X-Z"].each do |letter|
-    ["A"].each_with_index do |letter, index|      
+    ["A","B","C","D","E","F","G","H","I","J-K","L","M","N-O","P","Q-R","S","T","U-W","X-Z"].each do |letter|
+    #["A"].each_with_index do |letter, index|      
       url = "http://wikipedia.org/wiki/List_of_films:_#{letter}"
       doc = Nokogiri::HTML(open(url))
       doc.css('ul li i a').each_with_index do |movie_link, index|
-        movies << movie_link.text if index < 10
+        movies << movie_link.text# if index < 10
       end      
     end
 
@@ -48,7 +50,7 @@ namespace :movie do
         end
       end
     end
-
+    existing_movies = Movie.all.collect(&:imdb_id)
     imdb_ids.uniq.each do |movie_package|
       url = "http://www.imdb.com/title/#{movie_package[:source_id]}/"
       doc = Nokogiri::HTML(open(url))      
@@ -94,46 +96,49 @@ namespace :movie do
       p "year : #{year}"
       p "score : #{score}"
       p "genre : #{genre}"
+      p "poster  : #{poster}"
+      # youtube_url = "http://www.youtube.com/results?search_query=trailer+#{name.gsub(" ", "+").gsub("&", "%26")}"
+      # doc = Nokogiri::HTML(open(youtube_url))            
+      # video_id = doc.xpath('//ol[@id="search-results"]/li/@data-context-item-id').first.value
+      # trailer_url ="http://www.youtube.com/embed/#{video_id}"
 
-      youtube_url = "http://www.youtube.com/results?search_query=trailer+#{name.gsub(" ", "+").gsub("&", "%26")}"
-      doc = Nokogiri::HTML(open(youtube_url))            
-      video_id = doc.xpath('//ol[@id="search-results"]/li/@data-context-item-id').first.value
-      trailer_url ="http://www.youtube.com/embed/#{video_id}"
+      # p "trailer: #{trailer_url}"
 
-      p "trailer: #{trailer_url}"
+      current_movie = Movie.find_by_imdb_id(movie_package[:source_id])
+      if current_movie.blank?
+        unless existing_movies.include?(movie_package[:source_id])
 
-      #current_movie = Movie.find_by_imdb_id(movie_package[:source_id])
-      # if current_movie.blank?
-      #   unless existing_movies.include?(movie_package[:source_id])
-
-      #     p "saving... #{name}"
-      #     current_movie = Movie.new()
-      #     current_movie.title = name
-      #     current_movie.genres = genre          
-      #     current_movie.time_duration = duration
-      #     current_movie.director = director
-      #     current_movie.imdb_id = movie_package[:source_id]
-      #     current_movie.year = year
-      #     current_movie.score = score
-      #     current_movie.sinopsis = sinopsis        
-      #     youtube_url = "http://www.youtube.com/results?search_query=trailer+#{current_movie.title.gsub(" ", "+").gsub("&", "%26")}"
-      #     doc = Nokogiri::HTML(open(youtube_url))            
-      #     video_id = doc.xpath('//ol[@id="search-results"]/li/@data-context-item-id').first.value
-      #     trailer_url ="http://www.youtube.com/embed/#{video_id}"
-      #     current_movie.trailer = trailer_url
+          p "saving... #{name}"
+          current_movie = Movie.new()
+          current_movie.title = name
+          current_movie.genres = genre          
+          current_movie.time_duration = "#{duration.split("min").last.to_i} min"
+          current_movie.director = director
+          current_movie.imdb_id = movie_package[:source_id]
+          current_movie.year = year
+          current_movie.score = score
+          current_movie.synopsis = sinopsis        
+          youtube_url = "http://www.youtube.com/results?search_query=trailer+#{current_movie.title.gsub(" ", "+").gsub("&", "%26")}"
+          doc = Nokogiri::HTML(open(youtube_url))            
+          video_id = doc.xpath('//ol[@id="search-results"]/li/@data-context-item-id').first.value
+          trailer_url ="http://www.youtube.com/embed/#{video_id}"
+          current_movie.trailer = trailer_url
           
-      #     poster_url = poster
-      #     source_image = open(poster_url)
-      #     temp_image = Tempfile.new("tem_poster_#{name}")
-      #     File.open(temp_image.path, 'wb') do |f|
-      #       f.write source_image.read
-      #     end
-      #     s3_name = "fseat/#{name}.#{poster_url.split('.').last}"
-      #     bucket.objects.create(s3_name, temp_image.read).acl = :public_read
-      #     current_movie.poster = "http://s3.amazonaws.com/modwedding/#{s3_name}"
-      #     current_movie.save 
-      #   end
-      # end
+          unless poster.blank?
+            poster_url = poster
+            source_image = open(poster_url)
+            temp_image = Tempfile.new("tem_poster_#{name}")
+            File.open(temp_image.path, 'wb') do |f|
+              f.write source_image.read
+            end
+            s3_name = "fseat/#{name}.#{poster_url.split('.').last}"
+            bucket.objects.create(s3_name, temp_image.read).acl = :public_read
+            current_movie.poster = "http://s3.amazonaws.com/modwedding/#{s3_name}"
+          end
+
+          current_movie.save 
+        end
+      end
     end
   end
 end

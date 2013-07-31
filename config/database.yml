@@ -4,3 +4,10 @@ development:
   database: vander_movies_development
   pool: 5
   
+
+production:
+  adapter: postgresql
+  encoding: unicode
+  database: vander_movies_production
+  pool: 5
+  
