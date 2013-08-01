@@ -4,9 +4,7 @@ require 'uri'
 
 namespace :movie do
   desc "feed movies"
-  task :get_movies => :environment do    
-    s3 = AWS::S3.new(:access_key_id => 'AKIAJINPR4ZEXQU2C5TA',:secret_access_key => 'rKSDiO+ydIM2TDBfWlbLNps54l/ASIj0XT+QGv/4')
-    bucket = s3.buckets['modwedding']
+  task :get_movies => :environment do        
     movies = []
     faked_movie = Movie.search("fake_movie").first
     current_letter = faked_movie.title.split("/")[1]
@@ -136,23 +134,13 @@ namespace :movie do
           current_movie.year = year
           current_movie.score = score
           current_movie.synopsis = sinopsis        
+          current_movie.poster = poster
           youtube_url = "http://www.youtube.com/results?search_query=trailer+#{current_movie.title.gsub(" ", "+").gsub("&", "%26")}"
           doc = Nokogiri::HTML(open(youtube_url))            
           video_id = doc.xpath('//ol[@id="search-results"]/li/@data-context-item-id').first.value
           trailer_url ="http://www.youtube.com/embed/#{video_id}"
           current_movie.trailer = trailer_url
-          
-          unless poster.blank?
-            poster_url = poster
-            source_image = open(poster_url)
-            temp_image = Tempfile.new("tem_poster_#{name}")
-            File.open(temp_image.path, 'wb') do |f|
-              f.write source_image.read
-            end
-            s3_name = "fseat/#{name}.#{poster_url.split('.').last}"
-            bucket.objects.create(s3_name, temp_image.read).acl = :public_read
-            current_movie.poster = "http://s3.amazonaws.com/modwedding/#{s3_name}"
-          end
+                    
 
           current_movie.save 
         end
