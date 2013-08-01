@@ -8,14 +8,32 @@ namespace :movie do
     s3 = AWS::S3.new(:access_key_id => 'AKIAJINPR4ZEXQU2C5TA',:secret_access_key => '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')
     bucket = s3.buckets['modwedding']
     movies = []
-    ["A","B","C","D","E","F","G","H","I","J-K","L","M","N-O","P","Q-R","S","T","U-W","X-Z"].each do |letter|
-    #["A"].each_with_index do |letter, index|      
-      url = "http://wikipedia.org/wiki/List_of_films:_#{letter}"
-      doc = Nokogiri::HTML(open(url))
-      doc.css('ul li i a').each_with_index do |movie_link, index|
-        movies << movie_link.text# if index < 10
+    faked_movie = Movie.search("fake_movie").first
+    current_letter = faked_movie.title.split("/")[1]
+    current_index = faked_movie.title.split("/").last.to_i    
+    p "*"*100
+    p faked_movie
+    p current_index
+    p current_letter
+    url = "http://wikipedia.org/wiki/List_of_films:_#{current_letter}"
+    doc = Nokogiri::HTML(open(url))
+    elements = doc.css('ul li i a').slice(current_index .. current_index + 50)
+    if elements.blank?
+      letters = ["A","B","C","D","E","F","G","H","I","J-K","L","M","N-O","P","Q-R","S","T","U-W","X-Z"]
+      next_letter = ""
+
+      letters.each_with_index do |l, index|
+        next_letter = letters[index + 1] if l == current_letter
+      end
+
+      faked_movie.update_attribute(:title, "fake_movie/#{next_letter}/0")
+    else
+      elements.each_with_index do |movie_link, index|
+        movies << movie_link.text
       end      
+      faked_movie.update_attribute(:title, "fake_movie/#{current_letter}/#{current_index + 50}")
     end
+          
 
     p movies
 
@@ -74,7 +92,7 @@ namespace :movie do
       #poster
       poster = ""
       doc.css(".image").each do |image_container| 
-        poster = image_container.xpath('//img[@itemprop="image"]/@src').first.value                
+        poster = image_container.xpath('//img[@itemprop="image"]/@src').try(:first).try(:value)
       end
 
       #director
@@ -87,7 +105,7 @@ namespace :movie do
       duration = doc.xpath('//time[@itemprop="duration"]').text
 
       #genre
-      genre = doc.xpath('//span[@itemprop="genre"]').first.text              
+      genre = doc.xpath('//span[@itemprop="genre"]').try(:first).try(:text)
 
 
       #resumen
